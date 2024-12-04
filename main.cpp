@@ -1,61 +1,69 @@
-#include <iostream>
 #include <SDL3/SDL.h>
+#include <stdlib.h>
+#include <time.h>
 
-// You shouldn't really use this statement, but it's fine for small programs
-using namespace std;
+int main(int argc, char *argv[])
+{
+    SDL_Window *window;
+    SDL_Surface *surface;
+    SDL_Event event;
 
-// You must include the command line parameters for your main function to be recognized by SDL
-int main(int argc, char** args) {
+    int width = 640;
+    int height = 480;
 
-	// Pointers to our window and surface
-	SDL_Surface* winSurface = NULL;
-	SDL_Window* window = NULL;
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s", SDL_GetError());
+        return 3;
+    }
 
-	// Initialize SDL. SDL_Init will return -1 if it fails.
-	if ( SDL_Init( SDL_INIT_EVERYTHING ) < 0 ) {
-		cout << "Error initializing SDL: " << SDL_GetError() << endl;
-		system("pause");
-		// End the program
-		return 1;
-	} 
+    // Create an application window with the following settings:
+    window = SDL_CreateWindow("An SDL3 window", width, height, SDL_WINDOW_OPENGL);
 
-	// Create our window
-	window = SDL_CreateWindow( "Example", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_SHOWN );
+    // Check that the window was successfully created
+    if (window == NULL) {
+        // In the case that the window could not be made...
+        SDL_LogError(SDL_LOG_CATEGORY_ERROR, "Could not create window: %s\n", SDL_GetError());
+        return 3;
+    }
 
-	// Make sure creating the window succeeded
-	if ( !window ) {
-		cout << "Error creating window: " << SDL_GetError()  << endl;
-		system("pause");
-		// End the program
-		return 1;
-	}
+    // Get the surface of the window
+    surface = SDL_GetWindowSurface(window);
+    if (!surface) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't get surface of window: %s", SDL_GetError());
+        return 3;
+    }
 
-	// Get the surface from the window
-	winSurface = SDL_GetWindowSurface( window );
+    while (1) {
+        SDL_PollEvent(&event);
+        if (event.type == SDL_EVENT_QUIT) {
+            break;
+        }
 
-	// Make sure getting the surface succeeded
-	if ( !winSurface ) {
-		cout << "Error getting surface: " << SDL_GetError() << endl;
-		system("pause");
-		// End the program
-		return 1;
-	}
+        // Init random seed
+        srand(time(NULL));
 
-	// Fill the window with a white rectangle
-	SDL_FillRect( winSurface, NULL, SDL_MapRGB( winSurface->format, 255, 255, 255 ) );
+        // Random position and size
+        int x_rand = rand() % width + 1;
+        int y_rand = rand() % height + 1;
+        int w_rand = rand() % (width / 5);
+        int h_rand = rand() % (height / 5);
 
-	// Update the window display
-	SDL_UpdateWindowSurface( window );
+        SDL_Rect rect = { x_rand, y_rand, w_rand, h_rand };
 
-	// Wait
-	system("pause");
+        // Random color
+        Uint32 color = SDL_MapSurfaceRGB(surface, rand() % 256, rand() % 256, rand() % 256);
 
-	// Destroy the window. This will also destroy the surface
-	SDL_DestroyWindow( window );
+        // Fill the rectangle with the color
+        SDL_FillSurfaceRect(surface, &rect, color);
 
-	// Quit SDL
-	SDL_Quit();
-	
-	// End the program
-	return 0;
+        // Update the window display
+        SDL_UpdateWindowSurface( window );
+    }
+
+    SDL_DestroySurface(surface);
+    SDL_DestroyWindow(window);
+
+    SDL_Quit();
+
+    return 0;
 }

@@ -16,7 +16,8 @@ else()
 endif()
 
 # Create your game executable target as usual
-add_executable(chopping-coconut MACOSX_BUNDLE main.cpp)
+# add_executable(chopping-coconut MACOSX_BUNDLE main.cpp)
+add_executable(chopping-coconut main.cpp)
 
 # Link to the actual SDL3 library.
 target_link_libraries(chopping-coconut PRIVATE SDL3::SDL3)
