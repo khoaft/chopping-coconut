@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
-project(chopping-coconut)
+project(snake)
+
+set (CMAKE_CXX_STANDARD 17)
 
 list(APPEND CMAKE_PREFIX_PATH "/usr/local")
 # Create an option to switch between a system sdl library and a vendored SDL library
@@ -17,7 +19,7 @@ endif()
 
 # Create your game executable target as usual
 # add_executable(chopping-coconut MACOSX_BUNDLE main.cpp)
-add_executable(chopping-coconut main.cpp)
+add_executable(snake main.cpp)
 
 # Link to the actual SDL3 library.
-target_link_libraries(chopping-coconut PRIVATE SDL3::SDL3)
+target_link_libraries(snake PRIVATE SDL3::SDL3)
