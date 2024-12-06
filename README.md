@@ -1,5 +1,5 @@
-# chopping-coconut
-A silly coconut game
+# snake
+A silly snake game
 
 ## Commands
 
