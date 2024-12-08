@@ -3,11 +3,10 @@
 #include <stdlib.h>
 #include <time.h>
 #include <vector>
-#include <iostream>
 #include <tuple>
 
-const unsigned int WINDOW_WIDTH = 1280;
-const unsigned int WINDOW_HEIGHT = 720;
+const unsigned int WINDOW_WIDTH = 800;
+const unsigned int WINDOW_HEIGHT = 600;
 
 std::tuple<int, int> random_position() {
     // Seed with a real random value, if available
@@ -17,8 +16,8 @@ std::tuple<int, int> random_position() {
   std::mt19937 gen(rd());
   
   // Define the distribution range, say from 0 to 100 inclusive, and make sure to divide by 10
-  std::uniform_int_distribution<> rand_width(0, WINDOW_WIDTH / 10);
-  std::uniform_int_distribution<> rand_height(0, WINDOW_HEIGHT / 10);
+  std::uniform_int_distribution<> rand_width(0, (WINDOW_WIDTH - 10) / 10);
+  std::uniform_int_distribution<> rand_height(0, (WINDOW_HEIGHT - 10) / 10);
   
   // Generate a random multiple of 10
   return std::make_tuple(rand_width(gen) * 10, rand_height(gen) * 10);
@@ -35,20 +34,18 @@ enum Direction {
 class Snake {
   public:
     int size;
-    unsigned int length;
     Direction direction;
     std::vector<SDL_Rect> rects;
 
     Snake(int size, unsigned int length) {
       this->size = size;
-      this->length = length;
       this->direction = RIGHT;
 
       std::tuple<int, int> position = random_position();
       int x = std::get<0>(position);
       int y = std::get<1>(position);
 
-      for (int i = 0; i < this->length; i++) {
+      for (int i = 0; i < length; i++) {
         SDL_Rect rect = { x - i * this->size, y, this->size, this->size };
         rects.push_back(rect);
       }
@@ -60,24 +57,10 @@ class Snake {
 
     void grow() {
       SDL_Rect rect = { rects[rects.size() - 1].x, rects[rects.size() - 1].y, this->size, this->size };
-      switch(direction) {
-        case UP:
-          rect.y += this->size;
-          break;
-        case DOWN:
-          rect.y -= this->size;
-          break;
-        case LEFT:
-          rect.x += this->size;
-          break;
-        case RIGHT:
-          rect.x -= this->size;
-          break;
-      }
       rects.push_back(rect);
     }
 
-    void move() {
+    bool move() {
       int x = rects[0].x;
       int y = rects[0].y;
 
@@ -106,9 +89,15 @@ class Snake {
         y = tmp;
 
         if (rects[0].x == rects[i].x && rects[0].y == rects[i].y) {
-          std::cout << "Game Over" << std::endl;
+          return false;
         }
       }
+
+      if (rects[0].x < 0 || rects[0].x >= WINDOW_WIDTH || rects[0].y < 0 || rects[0].y >= WINDOW_HEIGHT) {
+        return false;
+      }
+
+      return true;
     }
 
     void draw(SDL_Surface *surface) {
@@ -172,9 +161,6 @@ int main(int argc, char *argv[]) {
       return 3;
   }
 
-  // Init random seed
-  srand(time(NULL));
-
   Snake* snake = new Snake(10, 5);
   Food* food = new Food(10);
 
@@ -223,8 +209,11 @@ int main(int argc, char *argv[]) {
     if (current_time > last_time + 50) {
       SDL_FillSurfaceRect(surface, NULL, 0);
 
-      // Fill the rectangle with the color
-      snake->move();
+      if (!snake->move()) {
+        SDL_Delay(1000);
+        break;
+      }
+
       if (snake->rects[0].x == food->x && snake->rects[0].y == food->y) {
         snake->grow();
         food->spawn();
