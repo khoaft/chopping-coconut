@@ -1,7 +1,29 @@
 #include <SDL3/SDL.h>
+#include <random>
 #include <stdlib.h>
 #include <time.h>
 #include <vector>
+#include <iostream>
+#include <tuple>
+
+const unsigned int WINDOW_WIDTH = 1280;
+const unsigned int WINDOW_HEIGHT = 720;
+
+std::tuple<int, int> random_position() {
+    // Seed with a real random value, if available
+  std::random_device rd;
+  
+  // Initialize the random number generator with the seed
+  std::mt19937 gen(rd());
+  
+  // Define the distribution range, say from 0 to 100 inclusive, and make sure to divide by 10
+  std::uniform_int_distribution<> rand_width(0, WINDOW_WIDTH / 10);
+  std::uniform_int_distribution<> rand_height(0, WINDOW_HEIGHT / 10);
+  
+  // Generate a random multiple of 10
+  return std::make_tuple(rand_width(gen) * 10, rand_height(gen) * 10);
+}
+
 
 enum Direction {
   UP,
@@ -12,16 +34,22 @@ enum Direction {
 
 class Snake {
   public:
-    unsigned int size;
+    int size;
+    unsigned int length;
     Direction direction;
     std::vector<SDL_Rect> rects;
-    unsigned int velocity;
 
-    Snake(int x, int y, unsigned int size) {
-      direction = RIGHT;
-      velocity = 10;
-      for (int i = 0; i <= size; i++) {
-        SDL_Rect rect = { x - i * 10, y, 10, 10 };
+    Snake(int size, unsigned int length) {
+      this->size = size;
+      this->length = length;
+      this->direction = RIGHT;
+
+      std::tuple<int, int> position = random_position();
+      int x = std::get<0>(position);
+      int y = std::get<1>(position);
+
+      for (int i = 0; i < this->length; i++) {
+        SDL_Rect rect = { x - i * this->size, y, this->size, this->size };
         rects.push_back(rect);
       }
     }
@@ -30,40 +58,55 @@ class Snake {
       rects.clear();
     }
 
-    void move() {
+    void grow() {
+      SDL_Rect rect = { rects[rects.size() - 1].x, rects[rects.size() - 1].y, this->size, this->size };
       switch(direction) {
         case UP:
-          rects[0].y -= velocity;
+          rect.y += this->size;
           break;
         case DOWN:
-          rects[0].y += velocity;
+          rect.y -= this->size;
           break;
         case LEFT:
-          rects[0].x -= velocity;
+          rect.x += this->size;
           break;
         case RIGHT:
-          rects[0].x += velocity;
+          rect.x -= this->size;
+          break;
+      }
+      rects.push_back(rect);
+    }
+
+    void move() {
+      int x = rects[0].x;
+      int y = rects[0].y;
+
+      switch(direction) {
+        case UP:
+          rects[0].y -= this->size;
+          break;
+        case DOWN:
+          rects[0].y += this->size;
+          break;
+        case LEFT:
+          rects[0].x -= this->size;
+          break;
+        case RIGHT:
+          rects[0].x += this->size;
           break;
       }
 
       for (int i = 1; i < rects.size(); i++) {
-        switch(direction) {
-          case UP:
-          case DOWN:
-            if (rects[i].x == rects[i - 1].x) {
-              rects[i].y = (direction == UP) ? rects[i].y - velocity : rects[i].y + velocity;
-            } else {
-              rects[i].x = (rects[i - 1].x < rects[i].x) ? rects[i].x - velocity : rects[i].x + velocity;
-            }
-            break;
-          case LEFT:
-          case RIGHT:
-            if (rects[i].y == rects[i - 1].y) {
-              rects[i].x = (direction == LEFT) ? rects[i].x - velocity : rects[i].x + velocity;
-            } else {
-              rects[i].y = (rects[i - 1].y < rects[i].y) ? rects[i].y - velocity : rects[i].y + velocity;
-            }
-            break;
+        int tmp = rects[i].x;
+        rects[i].x = x;
+        x = tmp;
+
+        tmp = rects[i].y;
+        rects[i].y = y;
+        y = tmp;
+
+        if (rects[0].x == rects[i].x && rects[0].y == rects[i].y) {
+          std::cout << "Game Over" << std::endl;
         }
       }
     }
@@ -76,13 +119,36 @@ class Snake {
     }
 };
 
+class Food {
+  public:
+    int x;
+    int y;
+    int size;
+
+    Food(int size) {
+      std::tuple<int, int> position = random_position();
+      this->x = std::get<0>(position);
+      this->y = std::get<1>(position);
+      this->size = size;
+    }
+
+    void spawn() {
+      std::tuple<int, int> position = random_position();
+      this->x = std::get<0>(position);
+      this->y = std::get<1>(position);
+    }
+
+    void draw(SDL_Surface *surface) {
+      Uint32 color = SDL_MapSurfaceRGB(surface, 255, 165, 0);
+      SDL_Rect rect = { x, y, size, size };
+      SDL_FillSurfaceRect(surface, &rect, color);
+    }
+};
+
 int main(int argc, char *argv[]) {
   SDL_Window *window;
   SDL_Surface *surface;
   SDL_Event event;
-
-  int width = 1280;
-  int height = 720;
 
   if (!SDL_Init(SDL_INIT_VIDEO)) {
     SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't initialize SDL: %s", SDL_GetError());
@@ -90,7 +156,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Create an application window with the following settings:
-  window = SDL_CreateWindow("An SDL3 window", width, height, SDL_WINDOW_OPENGL);
+  window = SDL_CreateWindow("Snake Game", WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL);
 
   // Check that the window was successfully created
   if (window == NULL) {
@@ -105,16 +171,15 @@ int main(int argc, char *argv[]) {
       SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't get surface of window: %s", SDL_GetError());
       return 3;
   }
+
   // Init random seed
   srand(time(NULL));
 
-  // Random position
-  int x_rand = rand() % width;
-  int y_rand = rand() % height;
+  Snake* snake = new Snake(10, 5);
+  Food* food = new Food(10);
 
-  Snake* snake = new Snake(x_rand, y_rand, 5);
   unsigned int last_time = 0, current_time;
-  while (1) {
+  while(1) {
     SDL_PollEvent(&event);
 
     if (event.type == SDL_EVENT_QUIT) {
@@ -124,27 +189,50 @@ int main(int argc, char *argv[]) {
     if (event.type == SDL_EVENT_KEY_DOWN) {
       switch (event.key.key) {
         case SDLK_UP:
-          snake->direction = UP;
+        case SDLK_W:
+        case SDLK_K:
+          if (snake->direction != DOWN) {
+            snake->direction = UP;
+          }
           break;
         case SDLK_DOWN:
-          snake->direction = DOWN;
+        case SDLK_S:
+        case SDLK_J:
+          if (snake->direction != UP) {
+            snake->direction = DOWN;
+          }
           break;
         case SDLK_LEFT:
-          snake->direction = LEFT;
+        case SDLK_A:
+        case SDLK_H:
+          if (snake->direction != RIGHT) {
+            snake->direction = LEFT;
+          }
           break;
         case SDLK_RIGHT:
-          snake->direction = RIGHT;
+        case SDLK_D:
+        case SDLK_L:
+          if (snake->direction != LEFT) {
+            snake->direction = RIGHT;
+          }
           break;
       }
     }
 
     current_time = SDL_GetTicks();
-    if (current_time > last_time + 100) {
+    if (current_time > last_time + 50) {
       SDL_FillSurfaceRect(surface, NULL, 0);
 
       // Fill the rectangle with the color
       snake->move();
+      if (snake->rects[0].x == food->x && snake->rects[0].y == food->y) {
+        snake->grow();
+        food->spawn();
+      }
+
+      // Draw the snake and the food
       snake->draw(surface);
+      food->draw(surface);
 
       // Update the window display
       SDL_UpdateWindowSurface( window );
@@ -153,6 +241,7 @@ int main(int argc, char *argv[]) {
   }
 
   delete snake;
+  delete food;
 
   SDL_DestroySurface(surface);
   SDL_DestroyWindow(window);
