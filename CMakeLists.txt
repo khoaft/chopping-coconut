@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(snake)
 
-set (CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_OSX_ARCHITECTURES "arm64")
 
 list(APPEND CMAKE_PREFIX_PATH "/usr/local")
 # Create an option to switch between a system sdl library and a vendored SDL library
@@ -18,8 +19,7 @@ else()
 endif()
 
 # Create your game executable target as usual
-# add_executable(snake MACOSX_BUNDLE main.cpp)
-add_executable(snake main.cpp)
+add_executable(snake main.c snake/snake.c food/food.c)
 
 # Link to the actual SDL3 library.
 target_link_libraries(snake PRIVATE SDL3::SDL3)
